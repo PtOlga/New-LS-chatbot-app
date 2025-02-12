@@ -93,8 +93,12 @@ def build_knowledge_base():
 # Функция для загрузки базы знаний
 def load_knowledge_base():
     if os.path.exists(VECTOR_STORE_PATH):
-        st.write("[DEBUG] Загрузка существующего векторного хранилища")
-        return FAISS.load_local(VECTOR_STORE_PATH, embeddings_model)
+        st.write("[DEBUG] Загрузка существующего векторного хранилища")       
+        return FAISS.load_local(
+            VECTOR_STORE_PATH, 
+            embeddings_model, 
+            allow_dangerous_deserialization=True 
+        )
     else:
         st.write("[DEBUG] Векторное хранилище не найдено")
         return None
