@@ -5,3 +5,4 @@ langchain-huggingface
 langchain-groq
 python-dotenv
 beautifulsoup4
+faiss-cpu
