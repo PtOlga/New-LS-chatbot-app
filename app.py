@@ -78,7 +78,7 @@ def build_knowledge_base():
     for url in urls:
         try:
             loader = WebBaseLoader(url)
-            documents.extend(loader.load(timeout=10))
+            documents.extend(loader.load())
             st.write(f"[DEBUG] Загружен контент с {url}")
         except (RequestException, Timeout) as e:
             st.write(f"[ERROR] Ошибка загрузки страницы {url}: {e}")
