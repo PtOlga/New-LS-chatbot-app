@@ -1,0 +1,7 @@
+streamlit
+langchain-community
+langchain-core
+langchain-huggingface
+langchain-groq
+python-dotenv
+beautifulsoup4
