@@ -1,9 +1,8 @@
 import os
 import streamlit as st
-from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import InMemoryVectorStore
+from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.prompts import PromptTemplate
@@ -50,7 +49,7 @@ except Exception as e:
 embeddings_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large-instruct")
 print("[DEBUG] Модель эмбеддингов загружена")
 
-# Список страниц для анализа (вручную перечислены)
+# Список страниц для анализа
 urls = [
     "https://status.law",  
     "https://status.law/about",
@@ -66,73 +65,97 @@ urls = [
     "https://status.law/faq"
 ]
 
-# Загрузка данных
-@st.cache_data
-def load_data(urls):
+# Путь к файлу векторного хранилища
+VECTOR_STORE_PATH = "vector_store"
+
+# Функция для создания базы знаний
+def build_knowledge_base():
     documents = []
     for url in urls:
         try:
             loader = WebBaseLoader(url)
             documents.extend(loader.load(timeout=10))
-            print(f"[DEBUG] Загружен контент с {url}")
+            st.write(f"[DEBUG] Загружен контент с {url}")
         except (RequestException, Timeout) as e:
-            print(f"[ERROR] Ошибка загрузки страницы {url}: {e}")
+            st.write(f"[ERROR] Ошибка загрузки страницы {url}: {e}")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
     chunks = text_splitter.split_documents(documents)
-    print(f"[DEBUG] Разбито на {len(chunks)} фрагментов")
-    vector_store = InMemoryVectorStore.from_documents(chunks, embeddings_model)
-    retriever = vector_store.as_retriever()
-    print("[DEBUG] Векторное хранилище создано")
-    return retriever
+    st.write(f"[DEBUG] Разбито на {len(chunks)} фрагментов")
+    vector_store = FAISS.from_documents(chunks, embeddings_model)
+    vector_store.save_local(VECTOR_STORE_PATH)
+    st.write("[DEBUG] Векторное хранилище создано и сохранено")
+    return vector_store
 
-# Загрузка данных и создание ретривера
-if "retriever" not in st.session_state:
-    st.session_state.retriever = load_data(urls)
-retriever = st.session_state.retriever
+# Функция для загрузки базы знаний
+def load_knowledge_base():
+    if os.path.exists(VECTOR_STORE_PATH):
+        st.write("[DEBUG] Загрузка существующего векторного хранилища")
+        return FAISS.load_local(VECTOR_STORE_PATH, embeddings_model)
+    else:
+        st.write("[DEBUG] Векторное хранилище не найдено")
+        return None
 
-# Промпт для бота
-template = """
-You are a helpful legal assistant that answers questions based on information from status.law.
-Answer accurately and concisely.
-Question: {question}
-Only use the provided context to answer the question.
-Context: {context}
-"""
-prompt = PromptTemplate.from_template(template)
-
-# Инициализация цепочки обработки запроса
-if "chain" not in st.session_state:
-    st.session_state.chain = (
-        RunnableLambda(lambda x: {"context": x["context"], "question": x["question"]}) 
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-chain = st.session_state.chain
+# Загрузка базы знаний
+vector_store = load_knowledge_base()
 
 # Интерфейс Streamlit
 st.set_page_config(page_title="Legal Chatbot", page_icon="🤖")
 st.title("🤖 Legal Chatbot")
-st.write("Этот бот отвечает на юридические вопросы, используя информацию с сайта status.law.")
 
-# Поле для ввода вопроса
-user_input = st.text_input("Введите ваш вопрос:")
-if st.button("Отправить") and user_input:
-    retrieved_docs = retriever.get_relevant_documents(user_input)
-    context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
-    response = chain.invoke({"question": user_input, "context": context_text})
-    
-    # Сохранение истории сообщений
-    if "message_history" not in st.session_state:
-        st.session_state.message_history = []
-    st.session_state.message_history.append({"question": user_input, "answer": response})
-    
-    # Вывод ответа
-    st.write(response)
+# Если база знаний отсутствует, предлагаем её создать
+if vector_store is None:
+    st.write("База знаний не найдена. Нажмите кнопку, чтобы создать её.")
+    if st.button("Создать базу знаний"):
+        with st.spinner("Создание базы знаний..."):
+            vector_store = build_knowledge_base()
+            st.success("База знаний успешно создана!")
+            st.experimental_rerun()  # Перезапуск приложения для перехода в режим общения
 
-# Вывод истории сообщений
-if "message_history" in st.session_state:
-    st.write("### История сообщений")
-    for msg in st.session_state.message_history:
-        st.write(f"**User:** {msg['question']}")
-        st.write(f"**Bot:** {msg['answer']}")
+# Если база знаний есть, переходим в режим общения
+else:
+    st.write("База знаний загружена. Вы можете задать вопрос.")
+
+    # Промпт для бота
+    template = """
+    You are a helpful legal assistant that answers questions based on information from status.law.
+    Answer accurately and concisely.
+    Question: {question}
+    Only use the provided context to answer the question.
+    Context: {context}
+    """
+    prompt = PromptTemplate.from_template(template)
+
+    # Инициализация цепочки обработки запроса
+    if "chain" not in st.session_state:
+        st.session_state.chain = (
+            RunnableLambda(lambda x: {"context": x["context"], "question": x["question"]}) 
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+    chain = st.session_state.chain
+
+    # Поле для ввода вопроса
+    user_input = st.text_input("Введите ваш вопрос:")
+    if st.button("Отправить") and user_input:
+        # Поиск релевантных документов
+        retrieved_docs = vector_store.similarity_search(user_input)
+        context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
+
+        # Генерация ответа
+        response = chain.invoke({"question": user_input, "context": context_text})
+        
+        # Сохранение истории сообщений
+        if "message_history" not in st.session_state:
+            st.session_state.message_history = []
+        st.session_state.message_history.append({"question": user_input, "answer": response})
+        
+        # Вывод ответа
+        st.write(response)
+
+    # Вывод истории сообщений
+    if "message_history" in st.session_state:
+        st.write("### История сообщений")
+        for msg in st.session_state.message_history:
+            st.write(f"**User:** {msg['question']}")
+            st.write(f"**Bot:** {msg['answer']}")
