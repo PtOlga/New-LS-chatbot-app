@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -9,6 +10,9 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from requests.exceptions import RequestException, Timeout
+
+# Установка конфигурации страницы (должна быть первой командой)
+st.set_page_config(page_title="Legal Chatbot", page_icon="🤖")
 
 # Загрузка переменных окружения
 if os.path.exists(".env"):
@@ -97,10 +101,6 @@ def load_knowledge_base():
 
 # Загрузка базы знаний
 vector_store = load_knowledge_base()
-
-# Интерфейс Streamlit
-st.set_page_config(page_title="Legal Chatbot", page_icon="🤖")
-st.title("🤖 Legal Chatbot")
 
 # Если база знаний отсутствует, предлагаем её создать
 if vector_store is None:
