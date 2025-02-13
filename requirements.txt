@@ -7,4 +7,3 @@ python-dotenv
 beautifulsoup4
 faiss-cpu
 requests
-smtplib
