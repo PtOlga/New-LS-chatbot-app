@@ -27,9 +27,10 @@ if 'kb_info' not in st.session_state:
 # st.title("www.Status.Law Legal Assistant")
 
 st.markdown(
-    '<a href="https://status.law/" style="text-decoration: none; color: inherit;">'
-    '<h1>⚖️ Status.Law Legal Assistant</h1>'
-    '</a>',
+    '<a href="https://status.law/" style="text-decoration: underline; color: blue;">'
+    'Status.Law'
+    '</a>'
+    ' Legal Assistant',
     unsafe_allow_html=True
 )
 
