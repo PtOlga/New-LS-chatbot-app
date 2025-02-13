@@ -99,8 +99,12 @@ def load_knowledge_base():
         st.write("[DEBUG] Vector store not found")
         return None
 
-# Load the knowledge base
-if "vector_store" not in st.session_state or st.session_state.vector_store is None:
+# Initialize session state variable if it does not exist
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = None
+
+# Load the knowledge base if it exists
+if st.session_state.vector_store is None:
     vector_store = load_knowledge_base()
     if vector_store is None:
         st.write("Knowledge base not found. Press the button to create it.")
