@@ -24,13 +24,17 @@ if 'kb_info' not in st.session_state:
     }
 
 # Display title and knowledge base info
-st.title("Status Law Legal Assistant")
+st.title("www.Status.Law Legal Assistant")
 if st.session_state.kb_info['build_time'] and st.session_state.kb_info['size']:
     st.caption(f"(Knowledge base build time: {st.session_state.kb_info['build_time']:.2f} seconds, "
                f"size: {st.session_state.kb_info['size']:.2f} MB)")
 
 # Path to store vector database
 VECTOR_STORE_PATH = "vector_store"
+
+# Создание папки истории, если она не существует
+if not os.path.exists("chat_history"):
+    os.makedirs("chat_history")
 
 # Website URLs
 urls = [
