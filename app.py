@@ -13,26 +13,26 @@ from langchain_core.runnables import RunnableLambda
 import requests
 import json
 
-# Базовая конфигурация страницы
+# Page configuration
 st.set_page_config(page_title="Status Law Assistant", page_icon="⚖️")
 
-# Информация о базе знаний в session_state
+# Knowledge base info in session_state
 if 'kb_info' not in st.session_state:
     st.session_state.kb_info = {
         'build_time': None,
         'size': None
     }
 
-# Отображение заголовка и информации о базе
+# Display title and knowledge base info
 st.title("Status Law Legal Assistant")
 if st.session_state.kb_info['build_time'] and st.session_state.kb_info['size']:
     st.caption(f"(Knowledge base build time: {st.session_state.kb_info['build_time']:.2f} seconds, "
                f"size: {st.session_state.kb_info['size']:.2f} MB)")
 
-# Путь для хранения базы знаний
+# Path to store vector database
 VECTOR_STORE_PATH = "vector_store"
 
-# URLs сайта
+# Website URLs
 urls = [
     "https://status.law",  
     "https://status.law/about",
@@ -48,15 +48,14 @@ urls = [
     "https://status.law/faq"
 ]
 
-# Загрузка секретов
+# Load secrets
 try:
-    EMAIL_WEBHOOK = st.secrets["EMAIL_WEBHOOK"]
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except Exception as e:
     st.error("Error loading secrets. Please check your configuration.")
     st.stop()
 
-# Инициализация моделей
+# Initialize models
 @st.cache_resource
 def init_models():
     llm = ChatGroq(
@@ -69,7 +68,7 @@ def init_models():
     )
     return llm, embeddings
 
-# Создание базы знаний
+# Build knowledge base
 def build_knowledge_base(embeddings):
     start_time = time.time()
     
@@ -96,7 +95,7 @@ def build_knowledge_base(embeddings):
     end_time = time.time()
     build_time = end_time - start_time
     
-    # Подсчёт размера базы знаний
+    # Calculate knowledge base size
     total_size = 0
     for path, dirs, files in os.walk(VECTOR_STORE_PATH):
         for f in files:
@@ -104,7 +103,7 @@ def build_knowledge_base(embeddings):
             total_size += os.path.getsize(fp)
     size_mb = total_size / (1024 * 1024)
     
-    # Сохранение информации о базе
+    # Save knowledge base info
     st.session_state.kb_info['build_time'] = build_time
     st.session_state.kb_info['size'] = size_mb
     
@@ -117,33 +116,12 @@ def build_knowledge_base(embeddings):
     
     return vector_store
 
-# Отправка email через webhook
-def send_chat_history(history):
-    try:
-        body = "\n\n".join([
-            f"Q: {item['question']}\nA: {item['answer']}"
-            for item in history
-        ])
-        
-        response = requests.post(
-            EMAIL_WEBHOOK,
-            json={
-                'subject': 'Chat History Update',
-                'body': body
-            },
-            headers={'Content-Type': 'application/json'}
-        )
-        if response.status_code != 200:
-            st.error(f"Failed to send email through webhook: {response.text}")
-    except Exception as e:
-        st.error(f"Failed to send email: {str(e)}")
-
-# Основной код
+# Main function
 def main():
-    # Инициализация моделей
+    # Initialize models
     llm, embeddings = init_models()
     
-    # Проверка существования базы знаний
+    # Check if knowledge base exists
     if not os.path.exists(VECTOR_STORE_PATH):
         st.warning("Knowledge base not found.")
         if st.button("Create Knowledge Base"):
@@ -158,21 +136,21 @@ def main():
                 allow_dangerous_deserialization=True
             )
     
-    # Режим чата
+    # Chat mode
     if 'vector_store' in st.session_state:
         if 'messages' not in st.session_state:
             st.session_state.messages = []
             
-        # Показ истории сообщений
+        # Display chat history
         for message in st.session_state.messages:
             st.chat_message("user").write(message["question"])
             st.chat_message("assistant").write(message["answer"])
             
-        # Ввод пользователя
+        # User input
         if question := st.chat_input("Ask your question"):
             st.chat_message("user").write(question)
             
-            # Поиск контекста и генерация ответа
+            # Retrieve context and generate response
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
                     context = st.session_state.vector_store.similarity_search(question)
@@ -196,14 +174,11 @@ def main():
                     
                     st.write(response)
                     
-                    # Сохранение истории
+                    # Save chat history
                     st.session_state.messages.append({
                         "question": question,
                         "answer": response
                     })
-                    
-                    # Отправка email
-                    send_chat_history(st.session_state.messages)
 
 if __name__ == "__main__":
     main()
