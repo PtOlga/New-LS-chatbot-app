@@ -113,7 +113,7 @@ if vector_store is None:
         with st.spinner("Создание базы знаний..."):
             vector_store = build_knowledge_base()
             st.success("База знаний успешно создана!")
-            st.experimental_rerun()  # Перезапуск приложения для перехода в режим общения
+            st.rerun() # Перезапуск приложения для перехода в режим общения
 
 # Если база знаний есть, переходим в режим общения
 else:
