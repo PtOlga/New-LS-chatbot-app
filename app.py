@@ -8,7 +8,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.runnables import RunnableLambda
 from requests.exceptions import RequestException, Timeout
 
 # Установка конфигурации страницы
@@ -22,36 +22,26 @@ if os.path.exists(".env"):
 try:
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
     USER_AGENT = st.secrets["USER_AGENT"]
-    LANGSMITH_TRACING = st.secrets["LANGSMITH_TRACING"] 
-    LANGSMITH_ENDPOINT = st.secrets["LANGSMITH_ENDPOINT"]
-    LANGSMITH_API_KEY = st.secrets["LANGSMITH_API_KEY"]
-    LANGSMITH_PROJECT = st.secrets["LANGSMITH_PROJECT"]
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 except FileNotFoundError:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     USER_AGENT = os.getenv("USER_AGENT")
-    LANGSMITH_TRACING = os.getenv("LANGSMITH_TRACING") 
-    LANGSMITH_ENDPOINT = os.getenv("LANGSMITH_ENDPOINT")
-    LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
-    LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Проверка API-ключей
-if not all([GROQ_API_KEY, USER_AGENT, LANGSMITH_TRACING, LANGSMITH_ENDPOINT, LANGSMITH_API_KEY, LANGSMITH_PROJECT, OPENAI_API_KEY]):
+if not all([GROQ_API_KEY, USER_AGENT, OPENAI_API_KEY]):
     st.error("Ошибка: Не все переменные окружения заданы.")
     st.stop()
 
 # Инициализация LLM
 try:
     llm = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=0.6, api_key=GROQ_API_KEY)
-    print("[DEBUG] LLM успешно инициализирован")
 except Exception as e:
     st.error(f"Ошибка инициализации LLM: {e}")
     st.stop()
 
 # Инициализация эмбеддингов
 embeddings_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large-instruct")
-print("[DEBUG] Модель эмбеддингов загружена")
 
 # Список страниц для анализа
 urls = [
@@ -79,35 +69,32 @@ def build_knowledge_base():
         try:
             loader = WebBaseLoader(url)
             documents.extend(loader.load())
-            st.write(f"[DEBUG] Загружен контент с {url}")
         except (RequestException, Timeout) as e:
             st.write(f"[ERROR] Ошибка загрузки страницы {url}: {e}")
+    
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
     chunks = text_splitter.split_documents(documents)
-    st.write(f"[DEBUG] Разбито на {len(chunks)} фрагментов")
+    
     vector_store = FAISS.from_documents(chunks, embeddings_model)
     vector_store.save_local(VECTOR_STORE_PATH)
-    st.write("[DEBUG] Векторное хранилище создано и сохранено")
+    
     return vector_store
 
 # Функция для загрузки базы знаний
 def load_knowledge_base():
     if os.path.exists(VECTOR_STORE_PATH):
-        st.write("[DEBUG] Загрузка существующего векторного хранилища")       
         return FAISS.load_local(
             VECTOR_STORE_PATH, 
             embeddings_model, 
             allow_dangerous_deserialization=True 
         )
-    else:
-        st.write("[DEBUG] Векторное хранилище не найдено")
-        return None
+    return None
 
-# Проверяем, загружена ли база в текущую сессию
-if "vector_store" not in st.session_state:
+# Загружаем базу, если её нет в `st.session_state`
+if "vector_store" not in st.session_state or st.session_state.vector_store is None:
     st.session_state.vector_store = load_knowledge_base()
 
-vector_store = st.session_state.vector_store  # Используем загруженное значение
+vector_store = st.session_state.vector_store
 
 # Если база знаний отсутствует, предлагаем её создать
 if vector_store is None:
