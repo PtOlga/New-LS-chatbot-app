@@ -11,7 +11,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from requests.exceptions import RequestException, Timeout
 
-# Установка конфигурации страницы (должна быть первой командой)
+# Установка конфигурации страницы
 st.set_page_config(page_title="Legal Chatbot", page_icon="🤖")
 
 # Загрузка переменных окружения
@@ -103,19 +103,20 @@ def load_knowledge_base():
         st.write("[DEBUG] Векторное хранилище не найдено")
         return None
 
-# Загрузка базы знаний
-vector_store = load_knowledge_base()
+# Проверяем, загружена ли база в текущую сессию
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = load_knowledge_base()
+
+vector_store = st.session_state.vector_store  # Используем загруженное значение
 
 # Если база знаний отсутствует, предлагаем её создать
 if vector_store is None:
     st.write("База знаний не найдена. Нажмите кнопку, чтобы создать её.")
     if st.button("Создать базу знаний"):
         with st.spinner("Создание базы знаний..."):
-            vector_store = build_knowledge_base()
+            st.session_state.vector_store = build_knowledge_base()
             st.success("База знаний успешно создана!")
-            st.rerun() # Перезапуск приложения для перехода в режим общения
-
-# Если база знаний есть, переходим в режим общения
+            st.rerun()  # Перезапуск приложения
 else:
     st.write("База знаний загружена. Вы можете задать вопрос.")
 
@@ -142,20 +143,22 @@ else:
     # Поле для ввода вопроса
     user_input = st.text_input("Введите ваш вопрос:")
     if st.button("Отправить") and user_input:
-        # Поиск релевантных документов
-        retrieved_docs = vector_store.similarity_search(user_input)
-        context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
+        if st.session_state.vector_store:  # Проверяем, что база знаний загружена
+            retrieved_docs = st.session_state.vector_store.similarity_search(user_input)
+            context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
 
-        # Генерация ответа
-        response = chain.invoke({"question": user_input, "context": context_text})
-        
-        # Сохранение истории сообщений
-        if "message_history" not in st.session_state:
-            st.session_state.message_history = []
-        st.session_state.message_history.append({"question": user_input, "answer": response})
-        
-        # Вывод ответа
-        st.write(response)
+            # Генерация ответа
+            response = chain.invoke({"question": user_input, "context": context_text})
+
+            # Сохранение истории сообщений
+            if "message_history" not in st.session_state:
+                st.session_state.message_history = []
+            st.session_state.message_history.append({"question": user_input, "answer": response})
+
+            # Вывод ответа
+            st.write(response)
+        else:
+            st.error("Ошибка: база знаний не загружена.")
 
     # Вывод истории сообщений
     if "message_history" in st.session_state:
