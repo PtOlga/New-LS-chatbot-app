@@ -24,7 +24,15 @@ if 'kb_info' not in st.session_state:
     }
 
 # Display title and knowledge base info
-st.title("www.Status.Law Legal Assistant")
+# st.title("www.Status.Law Legal Assistant")
+
+st.markdown(
+    '<a href="https://status.law/" style="text-decoration: none; color: inherit;">'
+    '<h1>⚖️ Status.Law Legal Assistant</h1>'
+    '</a>',
+    unsafe_allow_html=True
+)
+
 if st.session_state.kb_info['build_time'] and st.session_state.kb_info['size']:
     st.caption(f"(Knowledge base build time: {st.session_state.kb_info['build_time']:.2f} seconds, "
                f"size: {st.session_state.kb_info['size']:.2f} MB)")
