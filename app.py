@@ -157,7 +157,9 @@ if st.session_state.vector_store:
             if "message_history" not in st.session_state:
                 st.session_state.message_history = []
             st.session_state.message_history.append({"question": user_input, "answer": response})
-            save_history(st.session_state.message_history)
+
+            # Send the chat history to the email after each response
+            send_email("Chat History", generate_email_body(st.session_state.message_history), EMAIL_SENDER)
 
             st.write(response)
 
@@ -192,10 +194,6 @@ def send_email(subject, body, to_email):
     except Exception as e:
         st.error(f"Failed to send email: {str(e)}")
 
-# Button to send email
-if st.button("Send Chat History to Email"):
-    if "message_history" in st.session_state and st.session_state.message_history:
-        email_body = "\n\n".join([f"User: {msg['question']}\nBot: {msg['answer']}" for msg in st.session_state.message_history])
-        send_email("Chat History", email_body, EMAIL_SENDER)  # Send to the same email as sender
-    else:
-        st.error("No chat history available to send.")
+# Function to generate email body from message history
+def generate_email_body(message_history):
+    return "\n\n".join([f"User: {msg['question']}\nBot: {msg['answer']}" for msg in message_history])
