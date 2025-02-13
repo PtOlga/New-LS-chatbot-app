@@ -10,28 +10,47 @@ from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
+import json
 
 # Базовая конфигурация страницы
-st.set_page_config(page_title="Legal Assistant", page_icon="⚖️")
-st.title("Legal Assistant")
+st.set_page_config(page_title="Status Law Assistant", page_icon="⚖️")
+
+# Информация о базе знаний в session_state
+if 'kb_info' not in st.session_state:
+    st.session_state.kb_info = {
+        'build_time': None,
+        'size': None
+    }
+
+# Отображение заголовка и информации о базе
+st.title("Status Law Legal Assistant")
+if st.session_state.kb_info['build_time'] and st.session_state.kb_info['size']:
+    st.caption(f"(Knowledge base build time: {st.session_state.kb_info['build_time']:.2f} seconds, "
+               f"size: {st.session_state.kb_info['size']:.2f} MB)")
 
 # Путь для хранения базы знаний
 VECTOR_STORE_PATH = "vector_store"
 
-# URLs вашего сайта
+# URLs сайта
 urls = [
     "https://status.law",  
     "https://status.law/about",
-    # ... остальные URLs ...
+    "https://status.law/careers",
+    "https://status.law/challenging-sanctions",
+    "https://status.law/contact", 
+    "https://status.law/cross-border-banking-legal-issues", 
+    "https://status.law/extradition-defense", 
+    "https://status.law/international-prosecution-protection", 
+    "https://status.law/interpol-red-notice-removal",  
+    "https://status.law/practice-areas",  
+    "https://status.law/reputation-protection",
+    "https://status.law/faq"
 ]
 
 # Загрузка секретов
 try:
-    EMAIL_SENDER = st.secrets["EMAIL_SENDER"]
-    EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
+    EMAIL_WEBHOOK = st.secrets["EMAIL_WEBHOOK"]
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except Exception as e:
     st.error("Error loading secrets. Please check your configuration.")
@@ -77,32 +96,45 @@ def build_knowledge_base(embeddings):
     end_time = time.time()
     build_time = end_time - start_time
     
+    # Подсчёт размера базы знаний
+    total_size = 0
+    for path, dirs, files in os.walk(VECTOR_STORE_PATH):
+        for f in files:
+            fp = os.path.join(path, f)
+            total_size += os.path.getsize(fp)
+    size_mb = total_size / (1024 * 1024)
+    
+    # Сохранение информации о базе
+    st.session_state.kb_info['build_time'] = build_time
+    st.session_state.kb_info['size'] = size_mb
+    
     st.success(f"""
     Knowledge base created successfully:
     - Time taken: {build_time:.2f} seconds
+    - Size: {size_mb:.2f} MB
     - Number of chunks: {len(chunks)}
     """)
     
     return vector_store
 
-# Отправка email
+# Отправка email через webhook
 def send_chat_history(history):
     try:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = EMAIL_SENDER
-        msg['Subject'] = "Chat History Update"
-        
         body = "\n\n".join([
             f"Q: {item['question']}\nA: {item['answer']}"
             for item in history
         ])
-        msg.attach(MIMEText(body, 'plain'))
         
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.send_message(msg)
+        response = requests.post(
+            EMAIL_WEBHOOK,
+            json={
+                'subject': 'Chat History Update',
+                'body': body
+            },
+            headers={'Content-Type': 'application/json'}
+        )
+        if response.status_code != 200:
+            st.error(f"Failed to send email through webhook: {response.text}")
     except Exception as e:
         st.error(f"Failed to send email: {str(e)}")
 
@@ -147,8 +179,10 @@ def main():
                     context_text = "\n".join([doc.page_content for doc in context])
                     
                     prompt = PromptTemplate.from_template("""
-                    You are a helpful and polite legal assistant. Answer the question based on the provided context.
-                    If you cannot answer based on the context, say so politely.
+                    You are a helpful and polite legal assistant for Status Law company. 
+                    Answer the question based on the provided context.
+                    If you cannot answer based on the context, say so politely and suggest contacting Status Law directly.
+                    Keep your answers professional but friendly.
                     
                     Context: {context}
                     Question: {question}
