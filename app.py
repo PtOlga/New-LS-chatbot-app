@@ -56,7 +56,7 @@ urls = [
     "https://status.law/about",
     "https://status.law/careers",
     "https://status.law/challenging-sanctions",
-    "https://status.law/contact", 
+    "https://status.law/law-firm-contact-legal-protection"
     "https://status.law/cross-border-banking-legal-issues", 
     "https://status.law/extradition-defense", 
     "https://status.law/international-prosecution-protection", 
@@ -175,11 +175,19 @@ def main():
                     context_text = "\n".join([doc.page_content for doc in context])
                     
                     prompt = PromptTemplate.from_template("""
-                    You are a helpful and polite legal assistant for Status Law company. 
-                    Answer the question based on the provided context.
-                    If you cannot answer based on the context, say so politely and suggest contacting Status Law directly.
-                    Keep your answers professional but friendly.
-                    
+                    You are a helpful and polite legal assistant at Status Law.
+                    You answer in the language in which the question was asked.
+                    Answer the question based on the context provided.
+                    If you cannot answer based on the context, say so politely and offer to contact Status Law directly via the following channels:
+                    - For all users: +32465594521 (landline phone).
+                    - For English and Swedish speakers only: +46728495129 (available on WhatsApp, Telegram, Signal, IMO).
+                    - Provide a link to the contact form: [Contact Form](https://status.law/law-firm-contact-legal-protection/).
+                    Answer professionally but in a friendly manner.
+
+                    Example:
+                    Q: How can I challenge the sanctions?
+                    A: To challenge the sanctions, you should consult with our legal team, who specialize in this area. Please contact us directly for detailed advice. You can fill out our contact form here: [Contact Form](https://status.law/law-firm-contact-legal-protection/).
+
                     Context: {context}
                     Question: {question}
                     """)
