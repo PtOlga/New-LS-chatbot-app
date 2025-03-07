@@ -14,6 +14,15 @@ import requests
 import json
 from datetime import datetime
 
+# Create required directories
+REQUIRED_DIRS = ['chat_history', 'vector_store']
+for dir_name in REQUIRED_DIRS:
+    os.makedirs(dir_name, exist_ok=True)
+    gitkeep_path = os.path.join(dir_name, '.gitkeep')
+    if not os.path.exists(gitkeep_path):
+        with open(gitkeep_path, 'w') as f:
+            pass
+
 # Page configuration
 st.set_page_config(page_title="Status Law Assistant", page_icon="⚖️")
 
@@ -214,22 +223,32 @@ def main():
                     context_text = "\n".join([doc.page_content for doc in context])
                     
                     prompt = PromptTemplate.from_template("""
-                    You are a helpful and polite legal assistant at Status Law.
-                    You answer in the language in which the question was asked.
-                    Answer the question based on the context provided.
-                    If you cannot answer based on the context, say so politely and offer to contact Status Law directly via the following channels:
-                    - For all users: +32465594521 (landline phone).
-                    - For English and Swedish speakers only: +46728495129 (available on WhatsApp, Telegram, Signal, IMO).
-                    - Provide a link to the contact form: [Contact Form](https://status.law/law-firm-contact-legal-protection/).
-                    Answer professionally but in a friendly manner.
+You are a helpful and polite legal assistant at Status Law, an international law firm specializing in extradition cases.
 
-                    Example:
-                    Q: How can I challenge the sanctions?
-                    A: To challenge the sanctions, you should consult with our legal team, who specialize in this area. Please contact us directly for detailed advice. You can fill out our contact form here: [Contact Form](https://status.law/law-firm-contact-legal-protection/).
+Answer in the language in which the question was asked.
 
-                    Context: {context}
-                    Question: {question}
-                    """)
+Use the following information to answer questions:
+- Primary context: {context}
+- Services and pricing information: https://status.law/tariffs-for-services-against-extradition-en
+
+If asked about services or pricing, refer specifically to our extradition services pricing page and mention:
+1. We offer different service packages depending on the case stage
+2. Our services cover legal analysis, document preparation, court representation, and negotiation with authorities
+
+If you cannot answer based on the available information, say so politely and offer to contact Status Law directly via the following channels:
+- For all users: +32465594521 (landline phone)
+- For English and Swedish speakers only: +46728495129 (available on WhatsApp, Telegram, Signal, IMO)
+- Provide a link to the contact form: [Contact Form](https://status.law/law-firm-contact-legal-protection/)
+
+Question: {question}
+
+Response Guidelines:
+1. Answer in the user's language
+2. Be concise but informative
+3. Cite specific service packages and prices when relevant
+4. Emphasize our international expertise in extradition law
+5. Offer contact options if the question requires detailed legal advice
+""")
                     
                     chain = prompt | llm | StrOutputParser()
                     response = chain.invoke({
