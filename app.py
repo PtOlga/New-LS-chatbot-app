@@ -24,13 +24,17 @@ if 'kb_info' not in st.session_state:
         'size': None
     }
 
-# Добавить инициализацию chat_history
+# Initialize chat_history in session_state
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
-# Добавить инициализацию messages, если её ещё нет
+# Initialize messages if not exists
 if 'messages' not in st.session_state:
     st.session_state.messages = []
+
+# Create history folder if not exists
+if not os.path.exists("chat_history"):
+    os.makedirs("chat_history")
 
 # Display title and knowledge base info
 # st.title("www.Status.Law Legal Assistant")
@@ -54,10 +58,6 @@ if st.session_state.kb_info['build_time'] and st.session_state.kb_info['size']:
 
 # Path to store vector database
 VECTOR_STORE_PATH = "vector_store"
-
-# Создание папки истории, если она не существует
-if not os.path.exists("chat_history"):
-    os.makedirs("chat_history")
 
 # Website URLs
 urls = [
@@ -144,7 +144,7 @@ def build_knowledge_base(embeddings):
     
     return vector_store
 
-# Функция для сохранения истории чата
+# Function to save chat history
 def save_chat_to_file(chat_history):
     current_date = datetime.now().strftime("%Y-%m-%d")
     filename = f"chat_history/chat_history_{current_date}.json"
@@ -153,9 +153,9 @@ def save_chat_to_file(chat_history):
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(chat_history, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        st.error(f"Ошибка при сохранении истории чата: {e}")
+        st.error(f"Error saving chat history: {e}")
 
-# Функция для загрузки истории чата
+# Function to load chat history
 def load_chat_history():
     current_date = datetime.now().strftime("%Y-%m-%d")
     filename = f"chat_history/chat_history_{current_date}.json"
@@ -165,7 +165,7 @@ def load_chat_history():
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            st.error(f"Ошибка при загрузке истории чата: {e}")
+            st.error(f"Error loading chat history: {e}")
             return []
     return []
 
@@ -194,7 +194,7 @@ def main():
         if 'messages' not in st.session_state:
             st.session_state.messages = []
         
-        # Загрузка истории чата при запуске
+        # Load chat history on startup
         if not st.session_state.chat_history:
             st.session_state.chat_history = load_chat_history()
         
@@ -239,7 +239,7 @@ def main():
                     
                     st.write(response)
                     
-                    # Сохранение в историю чата
+                    # Save to chat history
                     chat_entry = {
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "question": question,
@@ -256,18 +256,4 @@ def main():
                     })
 
 if __name__ == "__main__":
-    main()
-
-# Добавить кнопку для выгрузки истории чата (опционально)
-if st.sidebar.button("Скачать историю чата"):
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    filename = f"chat_history_{current_date}.json"
-    
-    if st.session_state.chat_history:
-        json_str = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
-        st.download_button(
-            label="Скачать JSON",
-            data=json_str.encode('utf-8'),
-            file_name=filename,
-            mime="application/json"
         )
