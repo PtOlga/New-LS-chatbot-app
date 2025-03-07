@@ -128,7 +128,9 @@ def build_knowledge_base(embeddings):
     chunks = text_splitter.split_documents(documents)
     
     vector_store = FAISS.from_documents(chunks, embeddings)
-    vector_store.save_local(VECTOR_STORE_PATH)
+    
+    # Force save the vector store
+    force_save_vector_store(vector_store)
     
     end_time = time.time()
     build_time = end_time - start_time
@@ -178,6 +180,51 @@ def load_chat_history():
             st.error(f"Error loading chat history: {e}")
             return []
     return []
+
+def force_save_vector_store(vector_store):
+    """Ensures vector store is properly saved to disk"""
+    try:
+        # Ensure directory exists
+        os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
+        
+        # Save vector store
+        vector_store.save_local(VECTOR_STORE_PATH)
+        
+        # Verify files were created
+        if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
+            raise Exception("Vector store files were not created")
+            
+        st.sidebar.success("Vector store saved successfully")
+    except Exception as e:
+        st.sidebar.error(f"Failed to save vector store: {e}")
+
+def force_save_chat_history(chat_entry):
+    """Ensures chat history is properly saved to disk"""
+    try:
+        # Ensure directory exists
+        os.makedirs("chat_history", exist_ok=True)
+        
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        filename = f"chat_history/chat_history_{current_date}.json"
+        
+        # Load existing history
+        existing_history = []
+        if os.path.exists(filename):
+            with open(filename, 'r', encoding='utf-8') as f:
+                existing_history = json.load(f)
+        
+        # Add new entry
+        existing_history.append(chat_entry)
+        
+        # Save updated history with fsync to ensure disk write
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(existing_history, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        
+        st.sidebar.success("Chat history saved successfully")
+    except Exception as e:
+        st.sidebar.error(f"Failed to save chat history: {e}")
 
 # Main function
 def main():
@@ -278,7 +325,7 @@ Response Guidelines:
                     
                     st.write(response)
                     
-                    # Save to chat history
+                    # Create chat entry
                     chat_entry = {
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "question": question,
@@ -286,8 +333,13 @@ Response Guidelines:
                         "context": context_text
                     }
                     
+                    # Force save chat history
+                    force_save_chat_history(chat_entry)
+                    
+                    # Update session state
+                    if "chat_history" not in st.session_state:
+                        st.session_state.chat_history = []
                     st.session_state.chat_history.append(chat_entry)
-                    save_chat_to_file(st.session_state.chat_history)
                     
                     st.session_state.messages.append({
                         "question": question,
