@@ -14,11 +14,16 @@ import requests
 import json
 from datetime import datetime
 
-# Create required directories
-REQUIRED_DIRS = ['chat_history', 'vector_store']
-for dir_name in REQUIRED_DIRS:
-    os.makedirs(dir_name, exist_ok=True)
-    gitkeep_path = os.path.join(dir_name, '.gitkeep')
+# Define base directory and absolute paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VECTOR_STORE_PATH = os.path.join(BASE_DIR, "vector_store")
+CHAT_HISTORY_DIR = os.path.join(BASE_DIR, "chat_history")
+
+# Create required directories with absolute paths
+REQUIRED_DIRS = [CHAT_HISTORY_DIR, VECTOR_STORE_PATH]
+for dir_path in REQUIRED_DIRS:
+    os.makedirs(dir_path, exist_ok=True)
+    gitkeep_path = os.path.join(dir_path, '.gitkeep')
     if not os.path.exists(gitkeep_path):
         with open(gitkeep_path, 'w') as f:
             pass
@@ -129,7 +134,7 @@ def build_knowledge_base(embeddings):
     
     vector_store = FAISS.from_documents(chunks, embeddings)
     
-    # Force save the vector store
+    # Force save the vector store using absolute path
     force_save_vector_store(vector_store)
     
     end_time = time.time()
@@ -158,8 +163,9 @@ def build_knowledge_base(embeddings):
 
 # Function to save chat history
 def save_chat_to_file(chat_history):
+    """Save chat history to file using absolute path"""
     current_date = datetime.now().strftime("%Y-%m-%d")
-    filename = f"chat_history/chat_history_{current_date}.json"
+    filename = os.path.join(CHAT_HISTORY_DIR, f"chat_history_{current_date}.json")
     
     try:
         with open(filename, 'w', encoding='utf-8') as f:
@@ -169,8 +175,9 @@ def save_chat_to_file(chat_history):
 
 # Function to load chat history
 def load_chat_history():
+    """Load chat history from file using absolute path"""
     current_date = datetime.now().strftime("%Y-%m-%d")
-    filename = f"chat_history/chat_history_{current_date}.json"
+    filename = os.path.join(CHAT_HISTORY_DIR, f"chat_history_{current_date}.json")
     
     if os.path.exists(filename):
         try:
@@ -202,10 +209,10 @@ def force_save_chat_history(chat_entry):
     """Ensures chat history is properly saved to disk"""
     try:
         # Ensure directory exists
-        os.makedirs("chat_history", exist_ok=True)
+        os.makedirs(CHAT_HISTORY_DIR, exist_ok=True)
         
         current_date = datetime.now().strftime("%Y-%m-%d")
-        filename = f"chat_history/chat_history_{current_date}.json"
+        filename = os.path.join(CHAT_HISTORY_DIR, f"chat_history_{current_date}.json")
         
         # Load existing history
         existing_history = []
@@ -243,7 +250,7 @@ def main():
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error creating knowledge base: {e}")
-        return  # Exit if no knowledge base exists
+        return
     
     # Load existing knowledge base
     if 'vector_store' not in st.session_state:
