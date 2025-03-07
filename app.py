@@ -262,4 +262,4 @@ if st.sidebar.button("Скачать историю чата"):
             data=json_str.encode('utf-8'),
             file_name=filename,
             mime="application/json"
-    main()
+        )
