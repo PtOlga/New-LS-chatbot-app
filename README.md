@@ -7,7 +7,7 @@ sdk: streamlit
 sdk_version: 1.42.2
 app_file: app.py
 pinned: false
-short_description: It is a chat built using Streamlit with an AI model about www.Status.law
+short_description: AI chatbot for Status.law legal services using Streamlit
 ---
 
 # LS Chatbot app
