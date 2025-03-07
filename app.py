@@ -188,28 +188,70 @@ def load_chat_history():
             return []
     return []
 
+def check_directory_permissions(directory):
+    """Check if directory has proper read/write permissions"""
+    try:
+        # Check if directory exists and create if not
+        os.makedirs(directory, exist_ok=True)
+        
+        # Try to create a test file
+        test_file = os.path.join(directory, "write_test.txt")
+        with open(test_file, "w") as f:
+            f.write("test")
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
+            
+        # Try to read the test file
+        with open(test_file, "r") as f:
+            content = f.read()
+            if content != "test":
+                raise Exception("File content verification failed")
+                
+        # Clean up
+        os.remove(test_file)
+        
+        return True, None
+        
+    except Exception as e:
+        permissions = oct(os.stat(directory).st_mode)[-3:] if os.path.exists(directory) else "N/A"
+        error_msg = f"Permission error: {str(e)} (Directory permissions: {permissions})"
+        return False, error_msg
+
 def force_save_vector_store(vector_store):
     """Ensures vector store is properly saved to disk"""
     try:
-        # Ensure directory exists
-        os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
+        # Check directory permissions
+        success, error_msg = check_directory_permissions(VECTOR_STORE_PATH)
+        if not success:
+            raise Exception(error_msg)
         
         # Save vector store
         vector_store.save_local(VECTOR_STORE_PATH)
         
-        # Verify files were created
-        if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
+        # Verify vector store files were created
+        index_file = os.path.join(VECTOR_STORE_PATH, "index.faiss")
+        if not os.path.exists(index_file):
             raise Exception("Vector store files were not created")
             
+        # Verify file permissions
+        if not os.access(index_file, os.R_OK | os.W_OK):
+            raise Exception(f"Insufficient permissions for vector store files")
+            
         st.caption("✅ Vector store saved successfully")
+        
     except Exception as e:
-        st.caption(f"❌ Failed to save vector store: {e}")
+        error_msg = f"❌ Failed to save vector store: {str(e)}"
+        st.caption(error_msg)
+        st.error(error_msg)  # Also show as error message
+        raise Exception(error_msg)
 
 def force_save_chat_history(chat_entry):
     """Ensures chat history is properly saved to disk"""
     try:
-        # Ensure directory exists
-        os.makedirs(CHAT_HISTORY_DIR, exist_ok=True)
+        # Check directory permissions
+        success, error_msg = check_directory_permissions(CHAT_HISTORY_DIR)
+        if not success:
+            raise Exception(error_msg)
         
         current_date = datetime.now().strftime("%Y-%m-%d")
         filename = os.path.join(CHAT_HISTORY_DIR, f"chat_history_{current_date}.json")
@@ -228,10 +270,21 @@ def force_save_chat_history(chat_entry):
             json.dump(existing_history, f, ensure_ascii=False, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        
+            
+        # Verify file was created and is readable
+        if not os.path.exists(filename):
+            raise Exception("Chat history file was not created")
+            
+        if not os.access(filename, os.R_OK | os.W_OK):
+            raise Exception(f"Insufficient permissions for chat history file")
+            
         st.caption("✅ Chat history saved successfully")
+        
     except Exception as e:
-        st.caption(f"❌ Failed to save chat history: {e}")
+        error_msg = f"❌ Failed to save chat history: {str(e)}"
+        st.caption(error_msg)
+        st.error(error_msg)  # Also show as error message
+        raise Exception(error_msg)
 
 # Main function
 def main():
