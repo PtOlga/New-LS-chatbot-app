@@ -201,9 +201,9 @@ def force_save_vector_store(vector_store):
         if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
             raise Exception("Vector store files were not created")
             
-        st.sidebar.success("Vector store saved successfully")
+        st.caption("✅ Vector store saved successfully")
     except Exception as e:
-        st.sidebar.error(f"Failed to save vector store: {e}")
+        st.caption(f"❌ Failed to save vector store: {e}")
 
 def force_save_chat_history(chat_entry):
     """Ensures chat history is properly saved to disk"""
@@ -229,9 +229,9 @@ def force_save_chat_history(chat_entry):
             f.flush()
             os.fsync(f.fileno())
         
-        st.sidebar.success("Chat history saved successfully")
+        st.caption("✅ Chat history saved successfully")
     except Exception as e:
-        st.sidebar.error(f"Failed to save chat history: {e}")
+        st.caption(f"❌ Failed to save chat history: {e}")
 
 # Main function
 def main():
