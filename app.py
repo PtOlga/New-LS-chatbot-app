@@ -24,6 +24,14 @@ if 'kb_info' not in st.session_state:
         'size': None
     }
 
+# Добавить инициализацию chat_history
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+
+# Добавить инициализацию messages, если её ещё нет
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
 # Display title and knowledge base info
 # st.title("www.Status.Law Legal Assistant")
 
