@@ -13,6 +13,19 @@ from langchain_core.runnables import RunnableLambda
 import requests
 import json
 from datetime import datetime
+from huggingface_hub import HfApi, upload_file, upload_folder, create_repo, Repository
+from huggingface_hub.utils import RepositoryNotFoundError
+import shutil
+
+# Add these to your secrets or environment variables
+try:
+    HF_TOKEN = st.secrets["HF_TOKEN"]
+    HF_USERNAME = "Rulga"  # Your Hugging Face username
+    DATASET_NAME = "LS_chat"  # Your dataset name
+    DATASET_REPO = f"{HF_USERNAME}/{DATASET_NAME}"
+except Exception as e:
+    st.error("Error loading HuggingFace credentials. Please check your configuration.")
+    st.stop()
 
 # Define base directory and absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -217,43 +230,54 @@ def check_directory_permissions(directory):
         error_msg = f"Permission error: {str(e)} (Directory permissions: {permissions})"
         return False, error_msg
 
-def force_save_vector_store(vector_store):
-    """Ensures vector store is properly saved to disk"""
+def sync_with_hf(local_path, repo_path, commit_message):
+    """Sync local files with Hugging Face dataset"""
     try:
-        # Check directory permissions
-        success, error_msg = check_directory_permissions(VECTOR_STORE_PATH)
-        if not success:
-            raise Exception(error_msg)
+        api = HfApi()
         
-        # Save vector store
-        vector_store.save_local(VECTOR_STORE_PATH)
+        # Create repo if it doesn't exist
+        try:
+            api.repo_info(repo_id=DATASET_REPO, repo_type="dataset")
+        except RepositoryNotFoundError:
+            create_repo(DATASET_REPO, repo_type="dataset", token=HF_TOKEN)
         
-        # Verify vector store files were created
-        index_file = os.path.join(VECTOR_STORE_PATH, "index.faiss")
-        if not os.path.exists(index_file):
-            raise Exception("Vector store files were not created")
-            
-        # Verify file permissions
-        if not os.access(index_file, os.R_OK | os.W_OK):
-            raise Exception(f"Insufficient permissions for vector store files")
-            
-        #st.caption("✅ Vector store saved successfully")
-        st.toast("✅ Vector store saved", icon="💾")
+        # Upload directory content
+        api.upload_folder(
+            folder_path=local_path,
+            path_in_repo=repo_path,
+            repo_id=DATASET_REPO,
+            repo_type="dataset",
+            commit_message=commit_message,
+            token=HF_TOKEN
+        )
+        st.toast(f"✅ Synchronized with Hugging Face: {repo_path}", icon="🤗")
         
     except Exception as e:
-        error_msg = f"❌ Failed to save vector store: {str(e)}"
-        st.caption(error_msg)
-        st.error(error_msg)  # Also show as error message
+        error_msg = f"Failed to sync with Hugging Face: {str(e)}"
+        st.error(error_msg)
+        raise Exception(error_msg)
+
+def force_save_vector_store(vector_store):
+    """Save vector store locally and sync with HF"""
+    try:
+        # Local save
+        vector_store.save_local(VECTOR_STORE_PATH)
+        
+        # Sync with HF
+        sync_with_hf(
+            local_path=VECTOR_STORE_PATH,
+            repo_path="vector_store",
+            commit_message=f"Update vector store: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        
+    except Exception as e:
+        error_msg = f"Failed to save vector store: {str(e)}"
+        st.error(error_msg)
         raise Exception(error_msg)
 
 def force_save_chat_history(chat_entry):
-    """Ensures chat history is properly saved to disk"""
+    """Save chat history locally and sync with HF"""
     try:
-        # Check directory permissions
-        success, error_msg = check_directory_permissions(CHAT_HISTORY_DIR)
-        if not success:
-            raise Exception(error_msg)
-        
         current_date = datetime.now().strftime("%Y-%m-%d")
         filename = os.path.join(CHAT_HISTORY_DIR, f"chat_history_{current_date}.json")
         
@@ -266,27 +290,20 @@ def force_save_chat_history(chat_entry):
         # Add new entry
         existing_history.append(chat_entry)
         
-        # Save updated history with fsync to ensure disk write
+        # Save locally
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(existing_history, f, ensure_ascii=False, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-            os.sync()  # Принудительная синхронизация файловой системы
-            
-        # Verify file was created and is readable
-        if not os.path.exists(filename):
-            raise Exception("Chat history file was not created")
-            
-        if not os.access(filename, os.R_OK | os.W_OK):
-            raise Exception(f"Insufficient permissions for chat history file")
-            
-        #st.caption("✅ Chat history saved successfully")
-        st.toast("✅ Chat history saved", icon="💬")
+        
+        # Sync with HF
+        sync_with_hf(
+            local_path=CHAT_HISTORY_DIR,
+            repo_path="chat_history",
+            commit_message=f"Update chat history: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         
     except Exception as e:
-        error_msg = f"❌ Failed to save chat history: {str(e)}"
-        st.caption(error_msg)
-        st.error(error_msg)  # Also show as error message
+        error_msg = f"Failed to save chat history: {str(e)}"
+        st.error(error_msg)
         raise Exception(error_msg)
 
 # Main function
