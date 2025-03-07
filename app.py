@@ -12,6 +12,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 import requests
 import json
+from datetime import datetime
 
 # Page configuration
 st.set_page_config(page_title="Status Law Assistant", page_icon="⚖️")
@@ -135,6 +136,31 @@ def build_knowledge_base(embeddings):
     
     return vector_store
 
+# Функция для сохранения истории чата
+def save_chat_to_file(chat_history):
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    filename = f"chat_history/chat_history_{current_date}.json"
+    
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(chat_history, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        st.error(f"Ошибка при сохранении истории чата: {e}")
+
+# Функция для загрузки истории чата
+def load_chat_history():
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    filename = f"chat_history/chat_history_{current_date}.json"
+    
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            st.error(f"Ошибка при загрузке истории чата: {e}")
+            return []
+    return []
+
 # Main function
 def main():
     # Initialize models
@@ -159,12 +185,16 @@ def main():
     if 'vector_store' in st.session_state:
         if 'messages' not in st.session_state:
             st.session_state.messages = []
-            
+        
+        # Загрузка истории чата при запуске
+        if not st.session_state.chat_history:
+            st.session_state.chat_history = load_chat_history()
+        
         # Display chat history
         for message in st.session_state.messages:
             st.chat_message("user").write(message["question"])
             st.chat_message("assistant").write(message["answer"])
-            
+        
         # User input
         if question := st.chat_input("Ask your question"):
             st.chat_message("user").write(question)
@@ -201,11 +231,35 @@ def main():
                     
                     st.write(response)
                     
-                    # Save chat history
+                    # Сохранение в историю чата
+                    chat_entry = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "question": question,
+                        "answer": response,
+                        "context": context_text
+                    }
+                    
+                    st.session_state.chat_history.append(chat_entry)
+                    save_chat_to_file(st.session_state.chat_history)
+                    
                     st.session_state.messages.append({
                         "question": question,
                         "answer": response
                     })
 
 if __name__ == "__main__":
+    main()
+
+# Добавить кнопку для выгрузки истории чата (опционально)
+if st.sidebar.button("Скачать историю чата"):
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    filename = f"chat_history_{current_date}.json"
+    
+    if st.session_state.chat_history:
+        json_str = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
+        st.download_button(
+            label="Скачать JSON",
+            data=json_str.encode('utf-8'),
+            file_name=filename,
+            mime="application/json"
     main()
