@@ -47,8 +47,8 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 
 # Create history folder if not exists
-if not os.path.exists("chat_history"):
-    os.makedirs("chat_history")
+#if not os.path.exists("chat_history"):
+#    os.makedirs("chat_history")
 
 # Display title and knowledge base info
 # st.title("www.Status.Law Legal Assistant")
@@ -71,7 +71,7 @@ if st.session_state.kb_info['build_time'] and st.session_state.kb_info['size']:
                f"size: {st.session_state.kb_info['size']:.2f} MB)")
 
 # Path to store vector database
-VECTOR_STORE_PATH = "vector_store"
+# VECTOR_STORE_PATH = "vector_store"
 
 # Website URLs
 urls = [
@@ -134,7 +134,7 @@ def build_knowledge_base(embeddings):
     
     vector_store = FAISS.from_documents(chunks, embeddings)
     
-    # Force save the vector store using absolute path
+    # Immediately save vector store after creation
     force_save_vector_store(vector_store)
     
     end_time = time.time()
@@ -237,7 +237,8 @@ def force_save_vector_store(vector_store):
         if not os.access(index_file, os.R_OK | os.W_OK):
             raise Exception(f"Insufficient permissions for vector store files")
             
-        st.caption("✅ Vector store saved successfully")
+        #st.caption("✅ Vector store saved successfully")
+        st.toast("✅ Vector store saved", icon="💾")
         
     except Exception as e:
         error_msg = f"❌ Failed to save vector store: {str(e)}"
@@ -270,6 +271,7 @@ def force_save_chat_history(chat_entry):
             json.dump(existing_history, f, ensure_ascii=False, indent=2)
             f.flush()
             os.fsync(f.fileno())
+            os.sync()  # Принудительная синхронизация файловой системы
             
         # Verify file was created and is readable
         if not os.path.exists(filename):
@@ -278,7 +280,8 @@ def force_save_chat_history(chat_entry):
         if not os.access(filename, os.R_OK | os.W_OK):
             raise Exception(f"Insufficient permissions for chat history file")
             
-        st.caption("✅ Chat history saved successfully")
+        #st.caption("✅ Chat history saved successfully")
+        st.toast("✅ Chat history saved", icon="💬")
         
     except Exception as e:
         error_msg = f"❌ Failed to save chat history: {str(e)}"
@@ -316,6 +319,11 @@ def main():
         except Exception as e:
             st.error(f"Error loading knowledge base: {e}")
             return
+        
+    with st.sidebar:
+        st.write(f"Working directory: {BASE_DIR}")
+        st.write(f"Vector store: {VECTOR_STORE_PATH}")
+        st.write(f"Chat history: {CHAT_HISTORY_DIR}")
     
     # Chat mode
     if 'vector_store' in st.session_state:
