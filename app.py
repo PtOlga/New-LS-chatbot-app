@@ -184,19 +184,30 @@ def main():
     llm, embeddings = init_models()
     
     # Check if knowledge base exists
-    if not os.path.exists(VECTOR_STORE_PATH):
-        st.warning("Knowledge base not found.")
+    if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
+        st.warning("Knowledge base not found. Please create it first.")
         if st.button("Create Knowledge Base"):
-            vector_store = build_knowledge_base(embeddings)
-            st.session_state.vector_store = vector_store
-            st.rerun()
-    else:
-        if 'vector_store' not in st.session_state:
+            with st.spinner("Creating knowledge base... This may take a few minutes."):
+                try:
+                    vector_store = build_knowledge_base(embeddings)
+                    st.session_state.vector_store = vector_store
+                    st.success("Knowledge base created successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error creating knowledge base: {e}")
+        return  # Exit if no knowledge base exists
+    
+    # Load existing knowledge base
+    if 'vector_store' not in st.session_state:
+        try:
             st.session_state.vector_store = FAISS.load_local(
                 VECTOR_STORE_PATH,
                 embeddings,
                 allow_dangerous_deserialization=True
             )
+        except Exception as e:
+            st.error(f"Error loading knowledge base: {e}")
+            return
     
     # Chat mode
     if 'vector_store' in st.session_state:
