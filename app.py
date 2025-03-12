@@ -1,6 +1,8 @@
+import streamlit as st
+st.set_page_config(page_title="Status Law Assistant", page_icon="⚖️")
+
 import os
 import time
-import streamlit as st
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -47,9 +49,6 @@ for dir_path in REQUIRED_DIRS:
     if not os.path.exists(gitkeep_path):
         with open(gitkeep_path, 'w') as f:
             pass
-
-# Page configuration
-st.set_page_config(page_title="Status Law Assistant", page_icon="⚖️")
 
 # Knowledge base info in session_state
 if 'kb_info' not in st.session_state:
