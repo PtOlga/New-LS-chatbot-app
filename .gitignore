@@ -1,13 +1,13 @@
-/.streamlit
-*.env
-.env
-venv
+# Secrets
 .streamlit/secrets.toml
 
-# Keep the folders but ignore their contents except .gitkeep
-chat_history/*
-!chat_history/.gitkeep
+# Environment variables
+.env
 
-vector_store/*
-!vector_store/.gitkeep
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+
 
