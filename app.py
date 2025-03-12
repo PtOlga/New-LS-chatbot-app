@@ -239,15 +239,19 @@ def check_directory_permissions(directory):
 def sync_with_hf(local_path, repo_path, commit_message):
     """Sync local files with Hugging Face dataset"""
     try:
+        st.write(f"DEBUG: Starting sync with HF for {repo_path}")
         api = HfApi()
         
-        # Create repo if it doesn't exist
+        # Ensure the repository exists
         try:
             api.repo_info(repo_id=DATASET_REPO, repo_type="dataset")
+            st.write("DEBUG: Repository exists")
         except RepositoryNotFoundError:
+            st.write("DEBUG: Creating new repository")
             create_repo(DATASET_REPO, repo_type="dataset", token=HF_TOKEN)
         
         # Upload directory content
+        st.write(f"DEBUG: Uploading folder {local_path} to {repo_path}")
         api.upload_folder(
             folder_path=local_path,
             path_in_repo=repo_path,
@@ -257,10 +261,12 @@ def sync_with_hf(local_path, repo_path, commit_message):
             token=HF_TOKEN
         )
         st.toast(f"✅ Synchronized with Hugging Face: {repo_path}", icon="🤗")
+        st.write("DEBUG: Sync completed successfully")
         
     except Exception as e:
         error_msg = f"Failed to sync with Hugging Face: {str(e)}"
         st.error(error_msg)
+        st.write(f"DEBUG: Sync error details: {str(e)}")
         raise Exception(error_msg)
 
 def force_save_vector_store(vector_store):
