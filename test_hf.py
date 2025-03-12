@@ -17,12 +17,19 @@ def test_token():
         user_info = api.whoami(token=token)
         print(f"Successfully logged in as: {user_info}")
         
-        # Check repository access
-        repo_info = api.repo_info(
+        # Check Space repository access
+        space_info = api.repo_info(
+            repo_id="Rulga/New-LS-chatbot-app",
+            repo_type="space"
+        )
+        print(f"Space info: {space_info}")
+        
+        # Check Dataset repository access
+        dataset_info = api.repo_info(
             repo_id="Rulga/LS_chat",
             repo_type="dataset"
         )
-        print(f"Repository info: {repo_info}")
+        print(f"Dataset info: {dataset_info}")
         
     except Exception as e:
         print(f"Error: {str(e)}")
