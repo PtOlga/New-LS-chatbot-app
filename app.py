@@ -20,11 +20,18 @@ import shutil
 # Add these to your secrets or environment variables
 try:
     HF_TOKEN = st.secrets["HF_TOKEN"]
-    HF_USERNAME = "Rulga"  # Your Hugging Face username
-    DATASET_NAME = "LS_chat"  # Your dataset name
+    HF_USERNAME = "Rulga"
+    DATASET_NAME = "LS_chat"
     DATASET_REPO = f"{HF_USERNAME}/{DATASET_NAME}"
+    
+    # Добавим проверку значения токена
+    if not HF_TOKEN or HF_TOKEN.strip() == "":
+        st.error("HF_TOKEN пустой или отсутствует в secrets")
+        st.stop()
+        
+    st.write("DEBUG: HF credentials loaded successfully")
 except Exception as e:
-    st.error("Error loading HuggingFace credentials. Please check your configuration.")
+    st.error(f"Ошибка загрузки HuggingFace credentials: {str(e)}")
     st.stop()
 
 # Define base directory and absolute paths
