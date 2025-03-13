@@ -422,17 +422,30 @@ Response Guidelines:
                     
                     st.write(response)
                     
-                    # Create chat entry
+                    # Add feedback collection to chat history
                     chat_entry = {
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "question": question,
                         "answer": response,
-                        "context": context_text
+                        "context": context_text,
+                        "feedback": None,  # Place for answer rating
+                        "corrections": None  # Place for corrections
                     }
-                    
-                    # Force save chat history
-                    force_save_chat_history(chat_entry)
-                    
+
+                    # Add feedback buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("👍 Good Answer"):
+                            chat_entry["feedback"] = "good"
+                            force_save_chat_history(chat_entry)
+                    with col2:
+                        if st.button("👎 Needs Improvement"):
+                            chat_entry["feedback"] = "needs_improvement"
+                            correction = st.text_area("Suggest an improved answer:")
+                            if correction:
+                                chat_entry["corrections"] = correction
+                                force_save_chat_history(chat_entry)
+
                     # Update session state
                     if "chat_history" not in st.session_state:
                         st.session_state.chat_history = []
